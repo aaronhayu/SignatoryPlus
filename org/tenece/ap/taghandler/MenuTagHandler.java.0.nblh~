@@ -1,0 +1,162 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.tenece.ap.taghandler;
+
+import com.google.common.collect.Multimap;
+import javax.servlet.jsp.JspException;
+import javax.servlet.jsp.tagext.TagSupport;
+import com.opensymphony.xwork2.ActionContext;
+import com.opensymphony.xwork2.inject.Container;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+import org.tenece.web.data.MenuData;
+import org.tenece.web.data.MenuSubMenuInfo;
+import org.tenece.web.data.Users;
+import org.tenece.web.services.UserService;
+/**
+ *
+ * @author kenneth
+ */
+public class MenuTagHandler extends TagSupport{
+      
+ private UserService userService = new UserService();
+    /**
+     * @see javax.servlet.jsp.tagext.Tag#doStartTag()
+     */
+    @Override
+    public final int doStartTag() throws JspException
+    {
+        try
+        {
+            return EVAL_BODY_INCLUDE;
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw new JspException(e.getMessage());
+        }
+    }
+
+    /**
+     * @see javax.servlet.jsp.tagext.Tag#doEndTag()
+     */
+    @Override
+    public final int doEndTag() throws JspException
+    {
+        getMenu();
+        return EVAL_PAGE;
+    }
+
+    /**
+     * This Method is responsible for building User Menu based on the Selected
+     * Role on a Business Unit
+     */
+    private void getMenu()
+    {
+        try
+        {
+            
+
+            HttpServletRequest request = (HttpServletRequest) pageContext.getRequest();
+            Users user = this.getUserPrincipal(request);
+            StringBuilder tempBuilder = new StringBuilder();
+            
+            java.util.Date dateLogin   =  user.getDateLogin();
+            java.util.Date lastDate = user.getLastLoginDate();
+            String lastLoginDate = org.tenece.web.common.DateUtility.getDateAsString(lastDate, "dd/MM/yyyy");
+            if(dateLogin == null)
+            {
+                 tempBuilder.append("<a class=\"").append("menuitem").append("\"")
+                              .append(" target=\"").append("content").append("\"").append(" href=\"")
+                              .append("./changepassword_user.html").append("\">").append("Change Password").append("</a>");
+                 tempBuilder.append("<a class=\"").append("menuitem").append("\"")
+                              .append("\"").append(" href=\"").append("user_logout.html").append("\">")
+                              .append(" style=\"").append("border-bottom-width: 0")
+                              .append("Sign Out").append("</a>");
+                 System.out.println("***********************PASSWORD**************************************");
+                 System.out.println(tempBuilder);
+                 System.out.println("*************************************************************");
+             
+            }
+            else
+            {
+           
+            MenuSubMenuInfo menuSubmenuInfo = getUserService().getMenu(user.getId());
+            List<MenuData> menuList = menuSubmenuInfo.getMenuList();
+            Multimap<String, MenuData> subMenuMap = menuSubmenuInfo.getSubMenuMap();
+           for (MenuData menu : menuList) 
+           {
+               
+               if(menu.getDivClass().trim().equals("menuitem"))
+               {
+                   tempBuilder.append("<a class=\"").append(menu.getDivClass()).append("\"")
+                              .append(" target=\"").append(menu.getTarget()).append("\"").append(" href=\"")
+                              .append(menu.getURL()).append("\">").append(menu.getMenuTitle()).append("</a>");
+                     
+               }
+               else if(menu.getDivClass().trim().equals("submenuheader"))
+               {
+                   tempBuilder.append("<a class=menuitem \"").append(menu.getDivClass()).append("\"")
+                              .append("\n").append("href=\"#").append("\">").append(menu.getMenuTitle()).append("</a>");
+                    tempBuilder.append("\n").append("<div class=\"").append("submenu").append("\">");
+	            tempBuilder.append("\n\t").append("<ul>");
+                   // get the submenu 
+                   Collection<MenuData> subMenuList =  subMenuMap.get(menu.getMenuTitle());
+                    for (MenuData submenu : subMenuList) 
+                    {
+                       tempBuilder.append("\n").append("<li> <a target=\"").append(submenu.getTarget()).append("\"")
+                                  .append("href=\"").append(submenu.getURL()).append("\"").append("\">").append(menu.getSubmenutitle()).append("</a></li>");
+                      
+                    }
+                    tempBuilder.append("\n\t").append("</ul>");
+                    tempBuilder.append("</div>");
+                 System.out.println("***********************LOGIN IN**************************************");
+                 System.out.println(tempBuilder);
+                 System.out.println("*************************************************************");
+               }
+           }
+          
+         }
+        pageContext.setAttribute("username", user.getUserName());
+        pageContext.setAttribute("lastLoginDate", lastLoginDate);
+        
+        pageContext.getOut().write(tempBuilder.toString());
+        pageContext.getOut().flush();
+        }
+        catch (Exception ex)
+        {
+           ex.printStackTrace();
+        }
+    }
+
+   
+    public Users getUserPrincipal(HttpServletRequest request){
+        HttpSession session = request.getSession(false);
+        Users userPrincipal = null;
+        try{
+            userPrincipal = (Users) session.getAttribute("userPrincipal");
+        }catch(Exception e){
+            return null;
+        }
+        return userPrincipal;
+    }
+ /**
+     * @return the userService
+     */
+    private UserService getUserService() {
+        return userService;
+    }
+
+    /**
+     * @param userService the userService to set
+     */
+    private void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+}
